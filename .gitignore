@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Environment secrets – never commit these
+.env
+.env.local
+.env.*.local
+
+# Production builds
+dist/
+build/
+
+# Uploads (runtime files, not source)
+uploads/*
+!uploads/.gitkeep
+
+# OS noise
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-error.log*
