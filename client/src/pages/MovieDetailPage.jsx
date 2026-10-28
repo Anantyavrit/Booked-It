@@ -1,6 +1,16 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { Film, Clock, Calendar, Globe, Play, Users, ArrowLeft } from 'lucide-react';
+import {
+  Film,
+  Clock,
+  Calendar,
+  Globe,
+  Play,
+  Users,
+  ArrowLeft,
+  Star,
+  UserCheck,
+} from 'lucide-react';
 import { movieApi } from '../api/movieApi.js';
 import { useFetch } from '../hooks/useFetch.js';
 import { useCity } from '../context/CityContext.jsx';
@@ -28,7 +38,7 @@ export default function MovieDetailPage() {
   // Set document title
   useEffect(() => {
     if (movie?.title) {
-      document.title = `${movie.title} — Book Tickets | IMovies`;
+      document.title = `${movie.title} — Showtimes & Booking | IMovies`;
     } else {
       document.title = 'Movie Details — IMovies';
     }
@@ -49,10 +59,10 @@ export default function MovieDetailPage() {
 
   if (movieLoading) {
     return (
-      <div className="space-y-8 py-8 animate-pulse">
-        <div className="h-6 w-32 bg-neutral-900 rounded-lg" />
-        <div className="aspect-[21/9] w-full bg-neutral-900 rounded-3xl" />
-        <div className="h-40 bg-neutral-900 rounded-2xl w-full" />
+      <div className="space-y-8 py-6 animate-pulse">
+        <div className="h-5 w-32 bg-[#18181c] rounded" />
+        <div className="h-96 w-full bg-[#18181c] border border-[#2a2a30] rounded-xl" />
+        <div className="h-64 bg-[#18181c] border border-[#2a2a30] rounded-xl w-full" />
       </div>
     );
   }
@@ -62,40 +72,60 @@ export default function MovieDetailPage() {
       <div className="py-12">
         <ErrorState
           title="Movie Not Found"
-          message={movieError || 'The movie you are looking for does not exist or has been removed.'}
+          message={
+            movieError ||
+            'The movie you are looking for does not exist or is currently unavailable.'
+          }
           onRetry={refetchMovie}
         />
         <div className="text-center mt-6">
           <Link
             to="/movies"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-rose-400 hover:text-rose-300"
+            className="inline-flex items-center gap-2 text-xs font-semibold text-[#e50914] hover:underline"
           >
             <ArrowLeft className="w-4 h-4" />
-            Back to movies
+            Back to explore movies
           </Link>
         </div>
       </div>
     );
   }
 
+  const releaseYear = movie.releaseDate
+    ? new Date(movie.releaseDate).getFullYear()
+    : null;
+
   return (
-    <div className="space-y-12 py-6">
-      {/* Back button */}
+    <div className="space-y-8 py-4 sm:py-6">
+      {/* Back navigation */}
       <div>
         <Link
           to="/movies"
-          className="inline-flex items-center gap-2 text-xs font-semibold text-neutral-400 hover:text-white transition-colors"
+          className="inline-flex items-center gap-1.5 text-xs font-medium text-[#92929e] hover:text-[#f4f4f6] transition-colors"
         >
-          <ArrowLeft className="w-4 h-4" />
-          Back to all movies
+          <ArrowLeft className="w-3.5 h-3.5" />
+          <span>Back to movies</span>
         </Link>
       </div>
 
-      {/* Movie Hero & Backdrop Layout */}
-      <div className="relative rounded-3xl overflow-hidden border border-neutral-800 bg-neutral-900/40 p-6 sm:p-10">
-        <div className="flex flex-col md:flex-row gap-8 items-start">
-          {/* Poster */}
-          <div className="w-48 sm:w-64 aspect-[2/3] shrink-0 rounded-2xl overflow-hidden border border-neutral-800 bg-neutral-950 shadow-2xl relative">
+      {/* Backdrop Header with Poster & Metadata */}
+      <section className="relative rounded-xl overflow-hidden bg-[#18181c] border border-[#2a2a30]">
+        {/* Backdrop Artwork Background (Wide Cinema Vignette) */}
+        {movie.backdrop && (
+          <div className="absolute inset-0 pointer-events-none">
+            <img
+              src={movie.backdrop}
+              alt=""
+              className="w-full h-full object-cover object-top opacity-20 filter"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-[#18181c] via-[#18181c]/90 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#18181c] via-[#18181c]/80 to-transparent" />
+          </div>
+        )}
+
+        <div className="relative z-10 p-5 sm:p-8 md:p-10 flex flex-col md:flex-row gap-6 md:gap-8 items-start">
+          {/* Poster (2:3 aspect ratio) */}
+          <div className="w-44 sm:w-56 md:w-64 aspect-[2/3] shrink-0 rounded-lg overflow-hidden border border-[#2a2a30] bg-[#0f0f11] shadow-2xl relative">
             {!imgError && movie.poster ? (
               <img
                 src={movie.poster}
@@ -105,94 +135,162 @@ export default function MovieDetailPage() {
                 className="w-full h-full object-cover"
               />
             ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-neutral-900 text-neutral-400">
-                <Film className="w-12 h-12 text-rose-500 mb-2" />
-                <span className="text-sm font-semibold text-white">{movie.title}</span>
+              <div className="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-[#0f0f11] text-[#92929e]">
+                <Film className="w-10 h-10 mb-2 opacity-50 text-[#e50914]" />
+                <span className="text-xs font-semibold text-[#f4f4f6]">
+                  {movie.title}
+                </span>
+              </div>
+            )}
+
+            {/* Poster Format Badges */}
+            {movie.formats && movie.formats.length > 0 && (
+              <div className="absolute bottom-2 left-2 flex items-center gap-1">
+                {movie.formats.map((fmt) => (
+                  <span
+                    key={fmt}
+                    className="px-1.5 py-0.5 rounded bg-black/80 border border-white/10 text-[10px] font-semibold text-white"
+                  >
+                    {fmt}
+                  </span>
+                ))}
               </div>
             )}
           </div>
 
-          {/* Details */}
+          {/* Details Column */}
           <div className="flex-1 space-y-4">
+            {/* Category / Certificate / Genres Row */}
             <div className="flex flex-wrap items-center gap-2">
               {movie.certificate && (
-                <span className="px-2.5 py-1 rounded-md bg-neutral-800 border border-neutral-700 text-xs font-bold text-neutral-200">
+                <span className="px-2 py-0.5 rounded bg-[#0f0f11] border border-[#2a2a30] font-mono text-[11px] font-semibold text-[#f4f4f6]">
                   {movie.certificate}
                 </span>
               )}
+
+              {movie.status === 'now_showing' ? (
+                <span className="px-2 py-0.5 rounded bg-[#e50914]/15 border border-[#e50914]/40 text-[11px] font-semibold text-white">
+                  Now Showing
+                </span>
+              ) : movie.status === 'coming_soon' ? (
+                <span className="px-2 py-0.5 rounded bg-amber-500/15 border border-amber-500/40 text-[11px] font-semibold text-amber-400">
+                  Coming Soon
+                </span>
+              ) : null}
+
               {movie.genres?.map((genre) => (
                 <span
                   key={genre}
-                  className="px-2.5 py-1 rounded-md bg-rose-500/10 border border-rose-500/20 text-xs font-medium text-rose-300"
+                  className="px-2 py-0.5 rounded bg-[#0f0f11] border border-[#2a2a30] text-[11px] font-medium text-[#92929e]"
                 >
                   {genre}
                 </span>
               ))}
             </div>
 
-            <h1 className="text-2xl sm:text-4xl font-extrabold text-white tracking-tight">
+            {/* Movie Title */}
+            <h1 className="font-['Outfit'] text-2xl sm:text-4xl md:text-5xl font-extrabold text-[#f4f4f6] tracking-tight leading-tight">
               {movie.title}
             </h1>
 
-            {/* Quick Specs */}
-            <div className="flex flex-wrap items-center gap-4 text-xs text-neutral-400 pt-1">
-              <span className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-rose-500" />
+            {/* Tagline */}
+            {movie.tagline && (
+              <p className="text-xs sm:text-sm text-[#92929e] italic font-medium">
+                "{movie.tagline}"
+              </p>
+            )}
+
+            {/* Specs & Rating Row */}
+            <div className="flex flex-wrap items-center gap-3 text-xs text-[#92929e] pt-1">
+              {movie.rating ? (
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded bg-[#0f0f11] border border-[#2a2a30]">
+                  <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                  <span className="font-bold text-[#f4f4f6]">
+                    {Number(movie.rating).toFixed(1)}
+                  </span>
+                  <span className="text-[10px] text-[#92929e]">/ 10</span>
+                </div>
+              ) : null}
+
+              <span className="flex items-center gap-1 text-[#f4f4f6]">
+                <Clock className="w-3.5 h-3.5 text-[#92929e]" />
                 {formatDuration(movie.duration)}
               </span>
-              <span className="flex items-center gap-1.5">
-                <Globe className="w-4 h-4 text-amber-500" />
-                {movie.languages?.join(', ')}
+
+              <span>•</span>
+
+              <span className="flex items-center gap-1 text-[#f4f4f6]">
+                <Globe className="w-3.5 h-3.5 text-[#92929e]" />
+                {movie.languages?.join(', ') || movie.language}
               </span>
+
               {movie.releaseDate && (
-                <span className="flex items-center gap-1.5">
-                  <Calendar className="w-4 h-4 text-emerald-500" />
-                  {formatDate(movie.releaseDate, { year: 'numeric', month: 'short', day: 'numeric' })}
-                </span>
+                <>
+                  <span>•</span>
+                  <span className="flex items-center gap-1">
+                    <Calendar className="w-3.5 h-3.5 text-[#92929e]" />
+                    {formatDate(movie.releaseDate, {
+                      year: 'numeric',
+                      month: 'short',
+                      day: 'numeric',
+                    })}
+                  </span>
+                </>
               )}
             </div>
 
             {/* Synopsis */}
-            <div className="pt-2">
-              <h3 className="text-xs uppercase tracking-wider font-semibold text-neutral-400 mb-1.5">
-                About the Movie
-              </h3>
-              <p className="text-sm text-neutral-300 leading-relaxed max-w-2xl">
-                {movie.description}
-              </p>
-            </div>
-
-            {/* Cast & Director */}
-            {movie.cast && movie.cast.length > 0 && (
-              <div className="pt-2">
-                <h3 className="text-xs uppercase tracking-wider font-semibold text-neutral-400 mb-1.5 flex items-center gap-1.5">
-                  <Users className="w-3.5 h-3.5 text-rose-500" />
-                  Starring Cast
-                </h3>
-                <p className="text-xs text-neutral-300">
-                  {movie.cast.join(', ')}
+            {movie.description && (
+              <div className="pt-1">
+                <h2 className="text-xs uppercase tracking-wider font-semibold text-[#92929e] mb-1">
+                  Synopsis
+                </h2>
+                <p className="text-xs sm:text-sm text-[#f4f4f6]/90 leading-relaxed max-w-3xl">
+                  {movie.description}
                 </p>
               </div>
             )}
 
-            {/* Watch Trailer Button (only if trailerUrl exists) */}
+            {/* Director & Cast */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+              {movie.director && (
+                <div>
+                  <span className="text-[#92929e] block font-medium">Director</span>
+                  <span className="font-semibold text-[#f4f4f6]">
+                    {movie.director}
+                  </span>
+                </div>
+              )}
+
+              {movie.cast && movie.cast.length > 0 && (
+                <div>
+                  <span className="text-[#92929e] block font-medium">Starring Cast</span>
+                  <span className="text-[#f4f4f6] line-clamp-2">
+                    {movie.cast.join(', ')}
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Trailer Action Button */}
             {movie.trailerUrl && (
-              <div className="pt-3">
+              <div className="pt-2">
                 <button
+                  type="button"
                   onClick={() => setTrailerOpen(true)}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs sm:text-sm font-semibold text-white border border-neutral-700 transition-all hover:scale-105"
+                  className="btn-base px-4 py-2 rounded-md bg-[#0f0f11] hover:bg-[#222227] border border-[#2a2a30] hover:border-[#3e3e4a] text-xs font-semibold text-[#f4f4f6] transition-colors cursor-pointer gap-2"
                 >
-                  <Play className="w-4 h-4 text-rose-500 fill-rose-500" />
+                  <Play className="w-3.5 h-3.5 text-[#e50914] fill-[#e50914]" />
                   <span>Watch Trailer</span>
                 </button>
               </div>
             )}
           </div>
         </div>
-      </div>
+      </section>
 
-      {/* Showtimes Section */}
-      <section className="space-y-4">
+      {/* Showtimes Section (Grouped by Theatre + Date Tabs + Availability Pills) */}
+      <section className="pt-2">
         {showsError ? (
           <ErrorState message={showsError} onRetry={refetchShows} />
         ) : (

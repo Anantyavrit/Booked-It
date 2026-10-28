@@ -10,6 +10,7 @@ import {
   Film,
   RotateCcw,
   Clock,
+  Loader2,
 } from 'lucide-react';
 import { bookingApi } from '../api/bookingApi.js';
 import { paymentApi } from '../api/paymentApi.js';
@@ -31,13 +32,12 @@ export default function CheckoutPage() {
 
   const [paymentInProgress, setPaymentInProgress] = useState(false);
   const [confirmingModal, setConfirmingModal] = useState(false);
-  const [verifyRetryState, setVerifyRetryState] = useState(null); // stores payload for retry if 3 attempts fail
+  const [verifyRetryState, setVerifyRetryState] = useState(null);
   const [holdExpired, setHoldExpired] = useState(false);
 
   const isPayingRef = useRef(false);
   isPayingRef.current = paymentInProgress || confirmingModal;
 
-  // Validate ObjectId format
   const isValidObjectId = /^[0-9a-fA-F]{24}$/.test(bookingId || '');
 
   // 1. Fetch Booking Details
@@ -54,7 +54,6 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Check statuses
       if (b.status === 'confirmed') {
         navigate(`/booking/${b._id}/confirmation`, { replace: true });
         return;
@@ -70,7 +69,6 @@ export default function CheckoutPage() {
         return;
       }
 
-      // Check if hold is already past
       if (new Date(b.holdExpiresAt) <= new Date()) {
         setHoldExpired(true);
         return;
@@ -121,7 +119,6 @@ export default function CheckoutPage() {
     try {
       const verifyRes = await paymentApi.verifyPayment(verifyPayload);
 
-      // Check if server refunded due to hold expiry / seat conflict
       if (verifyRes.data?.success === false || verifyRes.data?.status === 'failed') {
         navigate('/payment/failed', {
           replace: true,
@@ -139,7 +136,6 @@ export default function CheckoutPage() {
     } catch (err) {
       const status = err.response?.status;
 
-      // If client signature mismatch (400), don't retry
       if (status === 400) {
         setConfirmingModal(false);
         setPaymentInProgress(false);
@@ -147,13 +143,11 @@ export default function CheckoutPage() {
         return;
       }
 
-      // If network / 5xx error and retries remain, wait 2s and retry
       if (attemptsLeft > 1) {
         setTimeout(() => {
           verifyWithRetries(verifyPayload, attemptsLeft - 1);
         }, 2000);
       } else {
-        // Retries exhausted
         setConfirmingModal(false);
         setPaymentInProgress(false);
         setVerifyRetryState(verifyPayload);
@@ -173,7 +167,7 @@ export default function CheckoutPage() {
       const orderRes = await paymentApi.createOrder(booking._id);
       const { orderId, amount, currency, keyId } = orderRes.data;
 
-      // 2. Re-fetch booking to reflect the extended hold (now + 10 mins)
+      // 2. Re-fetch booking to reflect the extended hold
       try {
         const fresh = await bookingApi.getBooking(booking._id);
         if (fresh?.data) {
@@ -199,7 +193,7 @@ export default function CheckoutPage() {
           email: user?.email || '',
         },
         theme: {
-          color: '#f5b301', // Gold accent
+          color: '#e50914',
         },
         handler: async function (response) {
           setConfirmingModal(true);
@@ -213,14 +207,13 @@ export default function CheckoutPage() {
         modal: {
           ondismiss: function () {
             setPaymentInProgress(false);
-            toast.info('Payment cancelled. You can try again before your hold expires.');
+            toast.info('Payment cancelled. You can retry before your hold timer expires.');
           },
         },
       };
 
       const rzp = new RazorpaySDK(options);
 
-      // Handle payment.failed event from modal
       rzp.on('payment.failed', async function (response) {
         setPaymentInProgress(false);
         const description = response.error?.description || 'Payment failed';
@@ -241,7 +234,7 @@ export default function CheckoutPage() {
 
   // Release Seats & Go Back
   const handleReleaseAndBack = async () => {
-    if (!window.confirm('Are you sure you want to release these seats and return?')) {
+    if (!window.confirm('Are you sure you want to release these seats and return to seat selection?')) {
       return;
     }
 
@@ -254,7 +247,6 @@ export default function CheckoutPage() {
     }
   };
 
-  // Invalid ObjectId param guard
   if (!isValidObjectId) {
     return (
       <div className="py-16">
@@ -265,7 +257,7 @@ export default function CheckoutPage() {
         <div className="text-center mt-6">
           <Link
             to="/movies"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-rose-400"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#e50914] hover:underline"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to movies
@@ -277,7 +269,7 @@ export default function CheckoutPage() {
 
   if (loading) {
     return (
-      <div className="py-24 text-center text-xs text-neutral-400 animate-pulse">
+      <div className="py-24 text-center text-xs text-[#92929e] animate-pulse">
         Loading booking checkout summary...
       </div>
     );
@@ -290,7 +282,7 @@ export default function CheckoutPage() {
         <div className="text-center mt-6">
           <Link
             to="/movies"
-            className="inline-flex items-center gap-2 text-xs font-semibold text-rose-400"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#e50914] hover:underline"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to movies
@@ -303,21 +295,23 @@ export default function CheckoutPage() {
   // Hold Expired State View
   if (holdExpired) {
     return (
-      <div className="py-16 max-w-lg mx-auto text-center space-y-6">
-        <div className="w-16 h-16 rounded-2xl bg-amber-500/10 border border-amber-500/20 mx-auto flex items-center justify-center text-amber-400">
-          <Clock className="w-8 h-8" />
+      <div className="py-16 max-w-lg mx-auto text-center space-y-5">
+        <div className="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/30 mx-auto flex items-center justify-center text-amber-400">
+          <Clock className="w-7 h-7" />
         </div>
-        <h2 className="text-2xl font-bold text-white tracking-tight">Your Seat Hold Has Expired</h2>
-        <p className="text-xs sm:text-sm text-neutral-400">
-          Seats are held temporarily while payment is processed. The time limit for this booking has elapsed and the seats have been released back to the public.
+        <h2 className="font-['Outfit'] text-2xl font-bold text-[#f4f4f6] tracking-tight">
+          Your Seat Hold Has Expired
+        </h2>
+        <p className="text-xs sm:text-sm text-[#92929e] leading-relaxed">
+          The hold window for these seats has elapsed and they have been released back to the general audience. Please re-select your seats to proceed.
         </p>
-        <div>
+        <div className="pt-2">
           <Link
             to={`/shows/${booking?.show?._id || ''}/seats`}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-rose-600 hover:bg-rose-500 font-semibold text-xs sm:text-sm text-white shadow-lg shadow-rose-950/40 transition-all"
+            className="btn-base px-6 py-2.5 rounded-md bg-[#e50914] hover:bg-[#c80812] font-semibold text-xs text-white transition-colors gap-2"
           >
             <ArrowLeft className="w-4 h-4" />
-            Select Available Seats
+            <span>Select Available Seats</span>
           </Link>
         </div>
       </div>
@@ -329,31 +323,33 @@ export default function CheckoutPage() {
   const theatre = show?.theatre;
 
   return (
-    <div className="max-w-4xl mx-auto py-8 space-y-8">
+    <div className="max-w-3xl mx-auto py-6 sm:py-8 space-y-6">
       {/* Full-screen confirmation loading overlay */}
       {confirmingModal && (
-        <div className="fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex flex-col items-center justify-center p-6 text-center space-y-4">
-          <div className="w-16 h-16 rounded-full border-4 border-rose-500/30 border-t-rose-500 animate-spin" />
-          <h2 className="text-xl sm:text-2xl font-bold text-white tracking-tight">
-            Confirming your payment...
+        <div className="fixed inset-0 z-50 bg-black/85 flex flex-col items-center justify-center p-6 text-center space-y-4 animate-in fade-in duration-200">
+          <Loader2 className="w-12 h-12 text-[#e50914] animate-spin" />
+          <h2 className="font-['Outfit'] text-xl sm:text-2xl font-bold text-[#f4f4f6] tracking-tight">
+            Confirming your booking...
           </h2>
-          <p className="text-xs sm:text-sm text-neutral-400 max-w-sm">
-            Please do not close this window or navigate away while we verify your transaction and assign your booking code.
+          <p className="text-xs sm:text-sm text-[#92929e] max-w-sm">
+            Please do not close this window while we verify your transaction and issue your cinema ticket code.
           </p>
         </div>
       )}
 
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800 pb-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-[#2a2a30] pb-4">
         <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">Checkout & Payment</h1>
-          <p className="text-xs text-neutral-400 mt-0.5">
-            Booking ID: <code className="text-neutral-300 font-mono">{booking._id}</code>
+          <h1 className="font-['Outfit'] text-2xl font-bold text-[#f4f4f6] tracking-tight">
+            Checkout & Order Summary
+          </h1>
+          <p className="text-xs text-[#92929e] mt-0.5">
+            Booking ID: <code className="text-[#f4f4f6] font-mono text-[11px]">{booking._id}</code>
           </p>
         </div>
 
         <div className="flex items-center gap-2 text-xs">
-          <span className="text-neutral-400">Time remaining:</span>
+          <span className="text-[#92929e]">Seat hold timer:</span>
           <HoldTimer
             expiresAt={booking.holdExpiresAt}
             serverOffsetMs={serverOffsetMs}
@@ -362,64 +358,71 @@ export default function CheckoutPage() {
         </div>
       </div>
 
-      {/* Unconfirmed verification retry notice (if 3 network retries failed) */}
+      {/* Unconfirmed verification retry notice */}
       {verifyRetryState && (
-        <div className="p-4 rounded-2xl bg-amber-950/40 border border-amber-900 text-xs text-amber-200 space-y-2">
+        <div className="p-4 rounded-lg bg-amber-950/30 border border-amber-900/60 text-xs text-amber-200 space-y-2">
           <div className="flex items-center gap-2 font-semibold">
-            <AlertCircle className="w-4 h-4 text-amber-400" />
-            We couldn't confirm your booking yet due to a network delay.
+            <AlertCircle className="w-4 h-4 text-amber-400 shrink-0" />
+            <span>Confirmation is taking a moment due to a network delay.</span>
           </div>
-          <p className="text-neutral-300">
-            Don't worry, your money is completely safe: if your booking cannot be confirmed, any deducted amount will be automatically refunded by Razorpay.
+          <p className="text-[#92929e]">
+            Your payment is secure. Click below to re-check your booking status.
           </p>
           <button
+            type="button"
             onClick={() => {
               setConfirmingModal(true);
               verifyWithRetries(verifyRetryState, 3);
             }}
-            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 font-semibold text-neutral-950 text-xs transition-colors"
+            className="btn-base px-3.5 py-1.5 rounded bg-amber-500 hover:bg-amber-400 text-neutral-950 font-semibold text-xs transition-colors gap-1.5"
           >
             <RotateCcw className="w-3.5 h-3.5" />
-            Check again
+            <span>Check status again</span>
           </button>
         </div>
       )}
 
       {/* Order Summary Card */}
-      <div className="p-6 sm:p-8 rounded-3xl bg-neutral-900/60 border border-neutral-800 backdrop-blur-md space-y-6">
-        <div className="flex flex-col sm:flex-row gap-6 items-start">
+      <div className="p-5 sm:p-7 rounded-lg bg-[#18181c] border border-[#2a2a30] shadow-xl space-y-6">
+        <div className="flex flex-col sm:flex-row gap-5 items-start">
           {/* Poster */}
-          <div className="w-24 sm:w-32 aspect-[2/3] shrink-0 rounded-2xl overflow-hidden bg-neutral-950 border border-neutral-800 shadow-md">
+          <div className="w-24 sm:w-28 aspect-[2/3] shrink-0 rounded-md overflow-hidden bg-[#0f0f11] border border-[#2a2a30]">
             {movie?.poster ? (
-              <img src={movie.poster} alt={movie.title} className="w-full h-full object-cover" />
+              <img
+                src={movie.poster}
+                alt={movie.title}
+                className="w-full h-full object-cover"
+              />
             ) : (
-              <div className="w-full h-full flex items-center justify-center bg-neutral-900">
-                <Film className="w-8 h-8 text-neutral-600" />
+              <div className="w-full h-full flex items-center justify-center bg-[#0f0f11] text-[#92929e]">
+                <Film className="w-6 h-6" />
               </div>
             )}
           </div>
 
           {/* Details */}
-          <div className="flex-1 space-y-3">
+          <div className="flex-1 space-y-2.5">
             <div>
-              <h2 className="text-xl font-bold text-white">{movie?.title}</h2>
-              <p className="text-xs text-neutral-400 mt-0.5">
+              <h2 className="font-['Outfit'] text-xl font-bold text-[#f4f4f6]">
+                {movie?.title}
+              </h2>
+              <p className="text-xs text-[#92929e] mt-0.5">
                 {theatre?.name} • {theatre?.city} • {show?.screenName}
               </p>
-              <p className="text-xs text-neutral-400">
+              <p className="text-xs text-[#92929e]">
                 {formatDate(show?.startTime)} at {formatTime(show?.startTime)}
               </p>
             </div>
 
-            <div className="pt-2 border-t border-neutral-800/80">
-              <span className="text-xs font-semibold text-neutral-400 block mb-1.5">
+            <div className="pt-2 border-t border-[#2a2a30]">
+              <span className="text-xs font-semibold text-[#92929e] block mb-1.5">
                 Reserved Seats ({booking.seats.length})
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {booking.seats.map((seatLabel) => (
                   <span
                     key={seatLabel}
-                    className="px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-xs font-bold text-rose-400"
+                    className="px-2 py-0.5 rounded bg-[#0f0f11] border border-[#2a2a30] text-xs font-bold text-[#f4f4f6]"
                   >
                     {seatLabel}
                   </span>
@@ -430,47 +433,58 @@ export default function CheckoutPage() {
         </div>
 
         {/* Financial Breakdown */}
-        <div className="pt-4 border-t border-neutral-800/80 space-y-2 text-xs">
-          <div className="flex justify-between text-neutral-400">
+        <div className="pt-4 border-t border-[#2a2a30] space-y-2 text-xs">
+          <div className="flex justify-between text-[#92929e]">
             <span>Ticket Base Amount ({booking.seats.length} seats)</span>
-            <span>{formatPrice(booking.amount)}</span>
+            <span className="text-[#f4f4f6]">{formatPrice(booking.amount)}</span>
           </div>
-          <div className="flex justify-between text-neutral-400">
-            <span>Convenience & Payment Gateway Charges</span>
-            <span className="text-emerald-400 font-medium">FREE</span>
+          <div className="flex justify-between text-[#92929e]">
+            <span>Convenience & Booking Fee</span>
+            <span className="text-emerald-400 font-semibold">FREE (₹0)</span>
           </div>
 
-          <div className="flex justify-between items-center text-lg font-extrabold text-white pt-3 border-t border-neutral-800">
+          <div className="flex justify-between items-center text-base font-bold text-[#f4f4f6] pt-3 border-t border-[#2a2a30]">
             <span>Grand Total</span>
-            <span className="text-amber-400 text-xl font-bold">{formatPrice(booking.amount)}</span>
+            <span className="text-xl font-bold text-[#e50914]">
+              {formatPrice(booking.amount)}
+            </span>
           </div>
         </div>
 
-        {/* Security Notice */}
-        <div className="flex items-center gap-2 p-3 rounded-xl bg-neutral-950/60 border border-neutral-800/80 text-[11px] text-neutral-400">
+        {/* Security / Compliance Badge */}
+        <div className="flex items-center gap-2 p-3 rounded bg-[#0f0f11] border border-[#2a2a30] text-[11px] text-[#92929e]">
           <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
           <span>
-            Test mode enabled. 256-bit encrypted checkout verified by Razorpay official cryptographic signature.
+            256-bit encrypted checkout verified by Razorpay cryptographic signature.
           </span>
         </div>
 
-        {/* Actions */}
-        <div className="pt-2 space-y-3">
+        {/* Action Buttons */}
+        <div className="pt-2 space-y-2">
           <button
             type="button"
             disabled={paymentInProgress || holdExpired}
             onClick={handlePayClick}
-            className="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 font-bold text-sm text-neutral-950 shadow-xl shadow-amber-950/30 transition-all flex items-center justify-center gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
+            className="btn-base w-full py-3 rounded-md bg-[#e50914] hover:bg-[#c80812] font-semibold text-sm text-white transition-colors cursor-pointer gap-2 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <CreditCard className="w-4 h-4" />
-            <span>{paymentInProgress ? 'Opening Checkout...' : `Pay ${formatPrice(booking.amount)}`}</span>
+            {paymentInProgress ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Opening Checkout...</span>
+              </>
+            ) : (
+              <>
+                <CreditCard className="w-4 h-4" />
+                <span>Pay {formatPrice(booking.amount)}</span>
+              </>
+            )}
           </button>
 
           <button
             type="button"
             disabled={paymentInProgress}
             onClick={handleReleaseAndBack}
-            className="w-full py-2.5 rounded-xl text-xs font-medium text-neutral-400 hover:text-rose-400 transition-colors flex items-center justify-center gap-1.5"
+            className="w-full py-2 text-xs font-medium text-[#92929e] hover:text-[#e50914] transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <XCircle className="w-3.5 h-3.5" />
             <span>Release seats and go back</span>

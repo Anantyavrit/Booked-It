@@ -20,19 +20,21 @@ export default function TrailerModal({ isOpen, trailerUrl, movieTitle, onClose }
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fadeIn"
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-4xl bg-neutral-950 border border-neutral-800 rounded-2xl overflow-hidden shadow-2xl"
+        className="relative w-full max-w-4xl bg-[#18181c] border border-[#2a2a30] rounded-lg overflow-hidden shadow-2xl"
       >
-        <div className="flex items-center justify-between p-4 border-b border-neutral-800">
-          <h3 className="text-sm font-semibold text-neutral-100 truncate">
-            {movieTitle} — Trailer
+        <div className="flex items-center justify-between p-3.5 border-b border-[#2a2a30]">
+          <h3 className="font-['Outfit'] text-sm font-semibold text-[#f4f4f6] truncate">
+            {movieTitle} — Official Trailer
           </h3>
           <button
+            type="button"
             onClick={onClose}
-            className="p-1.5 rounded-lg text-neutral-400 hover:text-white hover:bg-neutral-800"
+            className="p-1 rounded text-[#92929e] hover:text-[#f4f4f6] hover:bg-[#222227] transition-colors cursor-pointer"
+            aria-label="Close trailer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -48,8 +50,8 @@ export default function TrailerModal({ isOpen, trailerUrl, movieTitle, onClose }
               className="w-full h-full border-0"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-sm text-neutral-400">
-              Trailer video preview is currently unavailable
+            <div className="w-full h-full flex items-center justify-center text-xs text-[#92929e]">
+              Trailer video preview is currently unavailable.
             </div>
           )}
         </div>

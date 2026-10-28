@@ -16,34 +16,40 @@ export default function BookingSummary({
   onProceedPayment,
   onTimerExpire,
 }) {
-  const count = isHeldMode ? heldBooking?.seats?.length || selectedSeats.length : selectedSeats.length;
+  const count = isHeldMode
+    ? heldBooking?.seats?.length || selectedSeats.length
+    : selectedSeats.length;
 
-  // Amount: preview based on count * price, or the authoritative server amount once held
-  const displayAmount = isHeldMode && heldBooking?.amount !== undefined
-    ? heldBooking.amount
-    : count * price;
+  const displayAmount =
+    isHeldMode && heldBooking?.amount !== undefined
+      ? heldBooking.amount
+      : count * price;
 
-  const seatsList = isHeldMode ? heldBooking?.seats || selectedSeats : selectedSeats;
+  const seatsList = isHeldMode
+    ? heldBooking?.seats || selectedSeats
+    : selectedSeats;
 
   return (
-    <div className="p-5 sm:p-6 rounded-3xl bg-neutral-900/90 border border-neutral-800 shadow-xl space-y-6">
+    <div className="p-5 rounded-lg bg-[#18181c] border border-[#2a2a30] shadow-xl space-y-5">
       {/* Show & Movie Header */}
-      <div className="space-y-1.5 border-b border-neutral-800 pb-4">
-        <h3 className="font-bold text-lg text-white line-clamp-1">{show?.movie?.title}</h3>
-        <p className="text-xs text-neutral-400">
+      <div className="space-y-1 border-b border-[#2a2a30] pb-3">
+        <h3 className="font-['Outfit'] font-bold text-base text-[#f4f4f6] line-clamp-1">
+          {show?.movie?.title}
+        </h3>
+        <p className="text-xs text-[#92929e]">
           {show?.theatre?.name} • {show?.screenName}
         </p>
-        <p className="text-xs text-neutral-400">
+        <p className="text-xs text-[#92929e]">
           {formatDate(show?.startTime)} at {formatTime(show?.startTime)}
         </p>
       </div>
 
-      {/* Selected Seats Bar */}
+      {/* Selected Seats */}
       <div className="space-y-2">
-        <div className="flex items-center justify-between text-xs font-semibold text-neutral-400">
-          <span className="flex items-center gap-1.5">
-            <Armchair className="w-4 h-4 text-rose-500" />
-            {isHeldMode ? 'Held Seats' : 'Selected Seats'} ({count})
+        <div className="flex items-center justify-between text-xs font-semibold text-[#92929e]">
+          <span className="flex items-center gap-1.5 text-[#f4f4f6]">
+            <Armchair className="w-3.5 h-3.5 text-[#e50914]" />
+            <span>{isHeldMode ? 'Held Seats' : 'Selected Seats'} ({count})</span>
           </span>
           {isHeldMode && heldBooking?.holdExpiresAt && (
             <HoldTimer
@@ -55,37 +61,32 @@ export default function BookingSummary({
         </div>
 
         {seatsList.length > 0 ? (
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1">
             {seatsList.map((label) => (
               <span
                 key={label}
-                className="px-2.5 py-1 rounded-lg bg-neutral-950 border border-neutral-800 text-xs font-bold text-rose-400"
+                className="px-2 py-0.5 rounded bg-[#0f0f11] border border-[#2a2a30] text-xs font-semibold text-[#f4f4f6]"
               >
                 {label}
               </span>
             ))}
           </div>
         ) : (
-          <p className="text-xs text-neutral-500 italic">No seats selected yet</p>
+          <p className="text-xs text-[#92929e] italic">No seats selected yet</p>
         )}
       </div>
 
       {/* Pricing Breakdown */}
-      <div className="pt-2 border-t border-neutral-800 space-y-2 text-xs">
-        <div className="flex justify-between text-neutral-400">
-          <span>Ticket Price ({count} × {formatPrice(price)})</span>
-          <span>{formatPrice(displayAmount)}</span>
+      <div className="pt-2 border-t border-[#2a2a30] space-y-1.5 text-xs">
+        <div className="flex justify-between text-[#92929e]">
+          <span>Tickets ({count} × {formatPrice(price)})</span>
+          <span className="text-[#f4f4f6]">{formatPrice(displayAmount)}</span>
         </div>
 
-        <div className="flex justify-between text-base font-bold text-white pt-2 border-t border-neutral-800">
+        <div className="flex justify-between text-base font-bold text-[#f4f4f6] pt-2 border-t border-[#2a2a30]">
           <span>Total Amount</span>
-          <span className="text-rose-400">{formatPrice(displayAmount)}</span>
+          <span className="text-[#e50914]">{formatPrice(displayAmount)}</span>
         </div>
-        {isHeldMode && (
-          <p className="text-[10px] text-emerald-400 italic">
-            Authoritative amount verified by server
-          </p>
-        )}
       </div>
 
       {/* Actions */}
@@ -95,13 +96,13 @@ export default function BookingSummary({
             type="button"
             disabled={count === 0 || loadingHold}
             onClick={onHoldSeats}
-            className="w-full py-3.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-xs sm:text-sm text-white shadow-lg shadow-rose-950/40 transition-all flex items-center justify-center gap-2"
+            className="btn-base w-full py-2.5 rounded-md bg-[#e50914] hover:bg-[#c80812] disabled:opacity-40 disabled:cursor-not-allowed font-semibold text-xs text-white transition-colors cursor-pointer gap-2"
           >
             {loadingHold ? (
               <span>Securing Hold...</span>
             ) : (
               <>
-                <span>Hold Seats (5 Mins)</span>
+                <span>Continue to Pay</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
@@ -111,18 +112,18 @@ export default function BookingSummary({
             <button
               type="button"
               onClick={onProceedPayment}
-              className="w-full py-3.5 px-4 rounded-xl bg-emerald-600 hover:bg-emerald-500 font-semibold text-xs sm:text-sm text-white shadow-lg shadow-emerald-950/40 transition-all flex items-center justify-center gap-2"
+              className="btn-base w-full py-2.5 rounded-md bg-[#e50914] hover:bg-[#c80812] font-semibold text-xs text-white transition-colors cursor-pointer gap-2"
             >
-              <span>Proceed to Payment</span>
+              <span>Continue to Pay</span>
               <ArrowRight className="w-4 h-4" />
             </button>
 
             <button
               type="button"
               onClick={onReleaseHold}
-              className="w-full py-2.5 px-4 rounded-xl bg-neutral-800 hover:bg-neutral-700 font-medium text-xs text-neutral-300 transition-colors flex items-center justify-center gap-1.5"
+              className="btn-base w-full py-2 rounded-md bg-[#0f0f11] hover:bg-[#222227] border border-[#2a2a30] text-xs font-medium text-[#92929e] hover:text-[#f4f4f6] transition-colors cursor-pointer gap-1.5"
             >
-              <XCircle className="w-4 h-4 text-rose-400" />
+              <XCircle className="w-3.5 h-3.5 text-[#e50914]" />
               <span>Release Seats</span>
             </button>
           </>

@@ -1,40 +1,47 @@
 import React from 'react';
 
 /**
- * Seat Button Component
+ * Seat Button Component adhering to DESIGN.md design tokens
  * States:
- *   - available: neutral-800, hover rose-500
- *   - selected: rose-600 with white text & glow
- *   - heldByMe: emerald-600 with glow
- *   - heldByOther: amber-900/60 disabled
- *   - booked: neutral-950 text-neutral-600 border-neutral-900 disabled
+ *   - available: bg-[#1e1e24] border-[#3e3e4a] text-[#d4d4dc] hover:border-[#e50914]
+ *   - selected: bg-[#e50914] border-[#e50914] text-white font-bold
+ *   - heldByMe: bg-emerald-600 border-emerald-500 text-white font-bold
+ *   - heldByOther: bg-[#451a03] border-[#d97706]/60 text-[#fef3c7] disabled
+ *   - booked: bg-[#18181c] border-[#222226] text-[#4a4a55] disabled
  */
 export default function Seat({ seat, isSelected, isHeldByMe, onToggle, disabled }) {
   const { label, number, status } = seat;
 
-  let btnStyle = 'bg-neutral-800/80 border-neutral-700/60 text-neutral-300 hover:border-rose-500 hover:bg-neutral-700 hover:scale-105';
+  let btnStyle =
+    'bg-[#1e1e24] border-[#3e3e4a] text-[#d4d4dc] hover:border-[#e50914] hover:bg-[#25252e] hover:text-white cursor-pointer';
   let isDisabled = disabled;
 
   if (status === 'booked') {
-    btnStyle = 'bg-neutral-950/60 border-neutral-900 text-neutral-600 cursor-not-allowed opacity-40';
+    btnStyle =
+      'bg-[#18181c] border-[#222226] text-[#4a4a55] cursor-not-allowed opacity-40';
     isDisabled = true;
   } else if (isHeldByMe) {
-    btnStyle = 'bg-emerald-600 border-emerald-500 text-white shadow-md shadow-emerald-950/40 font-bold';
+    btnStyle =
+      'bg-emerald-600 border-emerald-500 text-white font-bold shadow-sm';
     isDisabled = disabled;
   } else if (status === 'held') {
-    btnStyle = 'bg-amber-950/40 border-amber-900/60 text-amber-500/50 cursor-not-allowed opacity-60';
+    btnStyle =
+      'bg-[#451a03] border-[#d97706]/50 text-[#d97706] cursor-not-allowed opacity-60';
     isDisabled = true;
   } else if (isSelected) {
-    btnStyle = 'bg-rose-600 border-rose-500 text-white shadow-lg shadow-rose-950/50 font-bold scale-105';
+    btnStyle =
+      'bg-[#e50914] border-[#e50914] text-white font-bold shadow-sm';
   }
 
   return (
     <button
       type="button"
-      aria-label={`Seat ${label}, ${status}${isSelected ? ', selected' : ''}${isHeldByMe ? ', held by you' : ''}`}
+      aria-label={`Seat ${label}, ${status}${isSelected ? ', selected' : ''}${
+        isHeldByMe ? ', held by you' : ''
+      }`}
       disabled={isDisabled}
       onClick={() => onToggle(label)}
-      className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg border text-[11px] sm:text-xs flex items-center justify-center transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-rose-500 select-none ${btnStyle}`}
+      className={`w-6 h-6 sm:w-7 sm:h-7 md:w-8 md:h-8 rounded text-[10px] sm:text-[11px] font-medium border flex items-center justify-center transition-colors select-none ${btnStyle}`}
     >
       {number}
     </button>

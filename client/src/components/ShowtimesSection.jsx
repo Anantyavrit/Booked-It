@@ -1,25 +1,28 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
-import { Building2, MapPin } from 'lucide-react';
+import { Building2, MapPin, Sparkles } from 'lucide-react';
 import DateTabs from './DateTabs.jsx';
 import ShowtimeButton from './ShowtimeButton.jsx';
 import EmptyState from './EmptyState.jsx';
 import { useCity } from '../context/CityContext.jsx';
 import { formatToYYYYMMDD } from '../utils/format.js';
 
+const STANDARD_AMENITIES = ['Dolby Atmos', '4K Projection', 'Recliner Seats', 'F&B'];
+
 export default function ShowtimesSection({ groupedTheatres = [], loading = false }) {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
-  const { selectedCity } = useCity();
+  const { selectedCity, setSelectedCity } = useCity();
 
-  // Extract distinct future dates that actually have shows across all theatres
+  // Extract distinct future dates that actually have shows
   const availableDates = useMemo(() => {
     const datesSet = new Set();
+    const now = new Date();
     groupedTheatres.forEach((group) => {
       group.shows?.forEach((show) => {
         const d = new Date(show.startTime);
-        if (d >= new Date()) {
+        if (d >= now) {
           datesSet.add(formatToYYYYMMDD(d));
         }
       });
@@ -30,7 +33,7 @@ export default function ShowtimesSection({ groupedTheatres = [], loading = false
   const [selectedDate, setSelectedDate] = useState(() => availableDates[0] || '');
 
   // Synchronize initial date when data loads
-  React.useEffect(() => {
+  useEffect(() => {
     if (availableDates.length > 0 && (!selectedDate || !availableDates.includes(selectedDate))) {
       setSelectedDate(availableDates[0]);
     }
@@ -47,8 +50,9 @@ export default function ShowtimesSection({ groupedTheatres = [], loading = false
   if (loading) {
     return (
       <div className="space-y-4 animate-pulse">
-        <div className="h-10 bg-neutral-900 rounded-xl w-64" />
-        <div className="h-32 bg-neutral-900 rounded-2xl w-full" />
+        <div className="h-12 bg-[#18181c] border border-[#2a2a30] rounded-lg w-72" />
+        <div className="h-40 bg-[#18181c] border border-[#2a2a30] rounded-lg w-full" />
+        <div className="h-40 bg-[#18181c] border border-[#2a2a30] rounded-lg w-full" />
       </div>
     );
   }
@@ -59,8 +63,19 @@ export default function ShowtimesSection({ groupedTheatres = [], loading = false
         title="No showtimes available"
         description={
           selectedCity
-            ? `There are no scheduled shows in ${selectedCity}. Try selecting another city.`
+            ? `There are no scheduled shows for this movie in ${selectedCity}. Try viewing all cities or checking upcoming releases.`
             : 'No upcoming shows are currently scheduled for this movie.'
+        }
+        action={
+          selectedCity && (
+            <button
+              type="button"
+              onClick={() => setSelectedCity('')}
+              className="px-4 py-2 rounded-md bg-[#e50914] hover:bg-[#c80812] text-xs font-semibold text-white transition-colors cursor-pointer"
+            >
+              View in All Cities
+            </button>
+          )
         }
       />
     );
@@ -78,55 +93,105 @@ export default function ShowtimesSection({ groupedTheatres = [], loading = false
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-neutral-800 pb-4">
-        <h2 className="text-xl font-bold text-neutral-100">Select Showtimes</h2>
-        <DateTabs
-          dates={availableDates}
-          selectedDate={selectedDate}
-          onSelectDate={setSelectedDate}
-        />
+      {/* Date Strip Across the Top & Availability Legend */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#2a2a30] pb-4">
+        <div>
+          <h2 className="font-['Outfit'] text-xl font-bold text-[#f4f4f6]">
+            Select Showtimes
+          </h2>
+          <p className="text-xs text-[#92929e] mt-0.5">
+            {selectedCity ? `Cinemas in ${selectedCity}` : 'All participating theatres'}
+          </p>
+        </div>
+
+        {/* Date Strip */}
+        <div className="overflow-x-auto no-scrollbar">
+          <DateTabs
+            dates={availableDates}
+            selectedDate={selectedDate}
+            onSelectDate={setSelectedDate}
+          />
+        </div>
       </div>
 
+      {/* Availability Status Legend */}
+      <div className="flex items-center gap-4 text-xs text-[#92929e] pt-1">
+        <span className="font-medium text-[#f4f4f6]">Legend:</span>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-emerald-500" />
+          <span>Available</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-amber-500" />
+          <span>Filling Fast</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="w-2 h-2 rounded-full bg-rose-500" />
+          <span>Almost Full</span>
+        </div>
+      </div>
+
+      {/* Grouped Theatres List */}
       {theatresForDate.length === 0 ? (
         <EmptyState
           title="No shows on this date"
-          description="Please choose another date or city from above."
+          description="Please choose another date from the strip above."
         />
       ) : (
         <div className="space-y-4">
-          {theatresForDate.map((group) => (
-            <div
-              key={group.theatre._id}
-              className="p-5 rounded-2xl bg-neutral-900/60 border border-neutral-800 flex flex-col md:flex-row md:items-center justify-between gap-4"
-            >
-              {/* Theatre details */}
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <Building2 className="w-4 h-4 text-rose-500 shrink-0" />
-                  <h3 className="text-base font-semibold text-neutral-100">
-                    {group.theatre.name}
-                  </h3>
-                </div>
-                <div className="flex items-center gap-1.5 text-xs text-neutral-400 pl-6">
-                  <MapPin className="w-3.5 h-3.5 shrink-0" />
-                  <span>
-                    {group.theatre.address}, {group.theatre.city}
-                  </span>
-                </div>
-              </div>
+          {theatresForDate.map((group) => {
+            const cleanAddress = (group.theatre.address || '')
+              .replace('(Sample Address)', '')
+              .trim();
+            const amenities = group.theatre.amenities?.length > 0
+              ? group.theatre.amenities
+              : STANDARD_AMENITIES;
 
-              {/* Showtimes buttons */}
-              <div className="flex flex-wrap items-center gap-3">
-                {group.shows.map((show) => (
-                  <ShowtimeButton
-                    key={show._id}
-                    show={show}
-                    onSelect={handleShowtimeSelect}
-                  />
-                ))}
+            return (
+              <div
+                key={group.theatre._id}
+                className="p-5 rounded-lg bg-[#18181c] border border-[#2a2a30] flex flex-col lg:flex-row lg:items-center justify-between gap-5"
+              >
+                {/* Theatre details (Name, Area/Locality, Amenities) */}
+                <div className="space-y-2 lg:max-w-md">
+                  <div>
+                    <h3 className="font-['Outfit'] text-base font-bold text-[#f4f4f6]">
+                      {group.theatre.name}
+                    </h3>
+                    <div className="flex items-center gap-1.5 text-xs text-[#92929e] mt-0.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#e50914] shrink-0" />
+                      <span className="truncate">
+                        {cleanAddress || group.theatre.city}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Amenities Badges */}
+                  <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                    {amenities.slice(0, 3).map((amenity) => (
+                      <span
+                        key={amenity}
+                        className="px-2 py-0.5 rounded bg-[#0f0f11] border border-[#2a2a30] text-[10px] font-medium text-[#92929e]"
+                      >
+                        {amenity}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Showtimes Buttons Grid */}
+                <div className="flex flex-wrap items-center gap-2.5">
+                  {group.shows.map((show) => (
+                    <ShowtimeButton
+                      key={show._id}
+                      show={show}
+                      onSelect={handleShowtimeSelect}
+                    />
+                  ))}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
     </div>

@@ -13,46 +13,50 @@ export default function PaymentFailedPage() {
   const refundInitiated = location.state?.refundInitiated;
 
   const defaultReason =
-    'The transaction could not be completed or the payment was cancelled. Your selected seats may have been released.';
+    'The transaction could not be completed or the checkout was dismissed. Your held seats may have expired.';
 
   return (
     <div className="max-w-md mx-auto py-16 px-4 text-center space-y-6">
-      <div className="w-16 h-16 rounded-full bg-rose-500/10 border border-rose-500/20 mx-auto flex items-center justify-center text-rose-500 shadow-lg shadow-rose-950/40">
-        <XCircle className="w-10 h-10" />
+      <div className="w-14 h-14 rounded-full bg-[#e50914]/15 border border-[#e50914]/30 mx-auto flex items-center justify-center text-[#e50914]">
+        <XCircle className="w-7 h-7" />
       </div>
 
-      <div className="space-y-2">
-        <h1 className="text-2xl font-extrabold text-white tracking-tight">Payment Unsuccessful</h1>
-        <p className="text-xs sm:text-sm text-neutral-400 leading-relaxed">
+      <div className="space-y-1.5">
+        <h1 className="font-['Outfit'] text-2xl font-bold text-[#f4f4f6] tracking-tight">
+          Payment Unsuccessful
+        </h1>
+        <p className="text-xs sm:text-sm text-[#92929e] leading-relaxed">
           {stateReason || defaultReason}
         </p>
       </div>
 
       {/* Refund Assurance Banner */}
-      <div className="p-4 rounded-2xl bg-neutral-900/60 border border-neutral-800 text-left flex items-start gap-3">
+      <div className="p-4 rounded-lg bg-[#18181c] border border-[#2a2a30] text-left flex items-start gap-3">
         <ShieldAlert className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
-        <div className="text-xs text-neutral-300">
-          <span className="font-semibold text-white block mb-0.5">Your Money is Safe</span>
+        <div className="text-xs text-[#92929e]">
+          <span className="font-semibold text-[#f4f4f6] block mb-0.5">
+            Your Money is Safe
+          </span>
           {refundInitiated
-            ? 'A full refund has already been triggered by Razorpay. Any deducted amount will reflect in your original payment method in 3–5 working days.'
-            : 'If any amount was deducted from your account, Razorpay will automatically reverse and refund it to your original payment method.'}
+            ? 'A full refund has been initiated by Razorpay. Any deducted funds will reflect in your account within 3–5 working days.'
+            : 'If any amount was deducted, Razorpay will automatically reverse and refund it to your original payment source.'}
         </div>
       </div>
 
-      <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
+      <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
         <Link
           to="/movies"
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-500 font-semibold text-xs text-white transition-all shadow-lg shadow-rose-950/30"
+          className="btn-base w-full sm:w-auto px-5 py-2.5 rounded-md bg-[#e50914] hover:bg-[#c80812] font-semibold text-xs text-white transition-colors gap-2"
         >
-          <RotateCcw className="w-4 h-4" />
+          <RotateCcw className="w-3.5 h-3.5" />
           <span>Try Another Show</span>
         </Link>
 
         <Link
           to="/"
-          className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 border border-neutral-800 font-semibold text-xs text-neutral-300 hover:text-white transition-colors"
+          className="btn-base w-full sm:w-auto px-5 py-2.5 rounded-md bg-[#18181c] hover:bg-[#222227] border border-[#2a2a30] font-semibold text-xs text-[#f4f4f6] transition-colors gap-2"
         >
-          <Home className="w-4 h-4" />
+          <Home className="w-3.5 h-3.5" />
           <span>Home</span>
         </Link>
       </div>
