@@ -10,10 +10,11 @@ import MovieGrid from '../components/MovieGrid.jsx';
 import Pagination from '../components/Pagination.jsx';
 import EmptyState from '../components/EmptyState.jsx';
 import ErrorState from '../components/ErrorState.jsx';
+import { Film, Calendar, Globe } from 'lucide-react';
 
 export default function MoviesPage() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const { selectedCity } = useCity();
+  const { selectedCity, setSelectedCity } = useCity();
 
   useEffect(() => {
     document.title = 'Explore Movies — IMovies';
@@ -23,6 +24,7 @@ export default function MoviesPage() {
   const querySearch = searchParams.get('search') || '';
   const queryGenre = searchParams.get('genre') || '';
   const queryLanguage = searchParams.get('language') || '';
+  const queryStatus = searchParams.get('status') || 'now_showing';
   const queryPage = parseInt(searchParams.get('page') || '1', 10);
 
   // Local state for immediate typing feedback
@@ -53,6 +55,9 @@ export default function MoviesPage() {
   const availableGenres = filtersData?.data?.genres || [];
   const availableLanguages = filtersData?.data?.languages || [];
 
+  // When browsing Now Showing without search, enforce hasShows: 'true' so users never see zero-showtime titles
+  const isNowShowing = queryStatus === 'now_showing' && !querySearch;
+
   // Fetch movies matching active filters, search, city, and pagination
   const { data: moviesData, loading, error, refetch } = useFetch(
     () =>
@@ -60,16 +65,22 @@ export default function MoviesPage() {
         search: querySearch || undefined,
         genre: queryGenre || undefined,
         language: queryLanguage || undefined,
-        city: selectedCity || undefined,
+        status: queryStatus || undefined,
+        hasShows: isNowShowing ? 'true' : undefined,
+        city: isNowShowing ? (selectedCity || undefined) : undefined,
         page: queryPage,
-        limit: 10,
-        sort: 'newest',
+        limit: 12,
+        sort: isNowShowing ? 'rating' : 'newest',
       }),
-    [querySearch, queryGenre, queryLanguage, selectedCity, queryPage]
+    [querySearch, queryGenre, queryLanguage, queryStatus, selectedCity, queryPage]
   );
 
   const movies = moviesData?.data || [];
   const pagination = moviesData?.pagination || {};
+
+  const handleStatusChange = (status) => {
+    updateUrlParams({ status, page: 1 });
+  };
 
   const handleGenreChange = (newGenre) => {
     updateUrlParams({ genre: newGenre, page: 1 });
@@ -95,10 +106,12 @@ export default function MoviesPage() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white">
-            Explore All Movies
+            Explore Movies
           </h1>
           <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-            {selectedCity ? `Showing movies scheduled in ${selectedCity}` : 'Discover top releases and upcoming cinema showtimes'}
+            {isNowShowing && selectedCity
+              ? `Showing movies with upcoming screenings in ${selectedCity}`
+              : 'Discover top cinema releases, live screenings, and upcoming blockbusters'}
           </p>
         </div>
 
@@ -109,6 +122,48 @@ export default function MoviesPage() {
             placeholder="Search by title..."
           />
         </div>
+      </div>
+
+      {/* Showing / Category Tabs */}
+      <div className="flex flex-wrap items-center gap-2 border-b border-neutral-800 pb-3">
+        <button
+          type="button"
+          onClick={() => handleStatusChange('now_showing')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            queryStatus === 'now_showing'
+              ? 'bg-rose-600 text-white shadow-lg shadow-rose-950/40'
+              : 'bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800'
+          }`}
+        >
+          <Film className="w-4 h-4" />
+          <span>Now Showing {selectedCity ? `in ${selectedCity}` : ''}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleStatusChange('coming_soon')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            queryStatus === 'coming_soon'
+              ? 'bg-amber-600 text-white shadow-lg shadow-amber-950/40'
+              : 'bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800'
+          }`}
+        >
+          <Calendar className="w-4 h-4" />
+          <span>Coming Soon</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => handleStatusChange('')}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+            queryStatus === ''
+              ? 'bg-neutral-700 text-white shadow-lg shadow-neutral-950/40'
+              : 'bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800'
+          }`}
+        >
+          <Globe className="w-4 h-4" />
+          <span>More Movies (Full Catalogue)</span>
+        </button>
       </div>
 
       {/* Filter Toolbar */}
@@ -129,20 +184,38 @@ export default function MoviesPage() {
         <ErrorState message={error} onRetry={refetch} />
       ) : !loading && movies.length === 0 ? (
         <EmptyState
-          title="No movies found"
-          description="We couldn't find any movie matching your current search or filters."
+          title={
+            isNowShowing && selectedCity
+              ? `No active shows in ${selectedCity}`
+              : 'No movies found'
+          }
+          description={
+            isNowShowing && selectedCity
+              ? `There are currently no scheduled screenings in ${selectedCity}. You can explore other cities or browse the full catalogue.`
+              : "We couldn't find any movie matching your current search or filters."
+          }
           action={
-            <button
-              onClick={handleResetFilters}
-              className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-white transition-colors"
-            >
-              Clear filters
-            </button>
+            <div className="flex flex-wrap gap-2 justify-center">
+              {isNowShowing && selectedCity && (
+                <button
+                  onClick={() => setSelectedCity('')}
+                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-xs font-semibold text-white transition-colors"
+                >
+                  View All Cities
+                </button>
+              )}
+              <button
+                onClick={() => handleStatusChange('')}
+                className="px-4 py-2 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-xs font-semibold text-white transition-colors"
+              >
+                Browse Full Catalogue
+              </button>
+            </div>
           }
         />
       ) : (
         <div className="space-y-8">
-          <MovieGrid movies={movies} loading={loading} skeletonCount={10} />
+          <MovieGrid movies={movies} loading={loading} skeletonCount={12} />
 
           <Pagination
             page={pagination.page || queryPage}

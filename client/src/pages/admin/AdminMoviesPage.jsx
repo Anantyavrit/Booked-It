@@ -71,6 +71,13 @@ const INITIAL_FORM = {
   duration: '',
   certificate: 'UA',
   cast: '',
+  director: '',
+  tagline: '',
+  backdrop: '',
+  formats: ['2D'],
+  rating: '',
+  tmdbId: '',
+  status: 'now_showing',
   releaseDate: '',
   trailerUrl: '',
   posterType: 'url', // 'url' | 'file'
@@ -136,6 +143,13 @@ export default function AdminMoviesPage() {
       duration: movie.duration ? String(movie.duration) : '',
       certificate: movie.certificate || '',
       cast: (movie.cast || []).join(', '),
+      director: movie.director || '',
+      tagline: movie.tagline || '',
+      backdrop: movie.backdrop || '',
+      formats: movie.formats && movie.formats.length > 0 ? movie.formats : ['2D'],
+      rating: movie.rating !== null && movie.rating !== undefined ? String(movie.rating) : '',
+      tmdbId: movie.tmdbId ? String(movie.tmdbId) : '',
+      status: movie.status || 'now_showing',
       releaseDate: movie.releaseDate ? formatToYYYYMMDD(movie.releaseDate) : '',
       trailerUrl: movie.trailerUrl || '',
       posterType: 'url',
@@ -162,6 +176,12 @@ export default function AdminMoviesPage() {
     }
     if (formData.certificate && !['U', 'UA', 'A'].includes(formData.certificate)) {
       errors.certificate = 'Certificate must be U, UA, or A';
+    }
+    if (formData.rating !== '' && formData.rating !== null && formData.rating !== undefined) {
+      const r = Number(formData.rating);
+      if (isNaN(r) || r < 0 || r > 10) {
+        errors.rating = 'Rating must be between 0 and 10';
+      }
     }
     if (formData.trailerUrl?.trim()) {
       try {
@@ -194,6 +214,13 @@ export default function AdminMoviesPage() {
     if (formData.releaseDate) body.append('releaseDate', formData.releaseDate);
     if (formData.cast.trim()) body.append('cast', formData.cast);
     body.append('trailerUrl', formData.trailerUrl.trim());
+    body.append('status', formData.status || 'now_showing');
+    if (formData.director.trim()) body.append('director', formData.director.trim());
+    if (formData.tagline.trim()) body.append('tagline', formData.tagline.trim());
+    if (formData.backdrop.trim()) body.append('backdrop', formData.backdrop.trim());
+    body.append('formats', (formData.formats || ['2D']).join(','));
+    if (formData.rating !== '') body.append('rating', formData.rating);
+    if (formData.tmdbId !== '') body.append('tmdbId', formData.tmdbId);
 
     if (editingMovie) {
       body.append('isActive', formData.isActive ? 'true' : 'false');
@@ -297,13 +324,31 @@ export default function AdminMoviesPage() {
       ),
     },
     {
-      key: 'isActive',
-      label: 'Status',
+      key: 'status',
+      label: 'Status / Visibility',
       render: (m) => (
-        <StatusBadge
-          status={m.isActive !== false ? 'active' : 'inactive'}
-          label={m.isActive !== false ? 'Active' : 'Inactive'}
-        />
+        <div className="flex flex-col gap-1 items-start">
+          <span
+            className={`inline-block px-1.5 py-0.5 rounded text-[11px] font-semibold uppercase tracking-wider ${
+              m.status === 'coming_soon'
+                ? 'bg-amber-500/10 text-amber-400 border border-amber-500/30'
+                : m.status === 'archived'
+                ? 'bg-neutral-800 text-neutral-400 border border-neutral-700'
+                : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
+            }`}
+          >
+            {m.status ? m.status.replace('_', ' ') : 'now showing'}
+          </span>
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <StatusBadge
+              status={m.isActive !== false ? 'active' : 'inactive'}
+              label={m.isActive !== false ? 'Active' : 'Inactive'}
+            />
+            {m.rating ? (
+              <span className="text-amber-400 font-medium">★ {m.rating}</span>
+            ) : null}
+          </div>
+        </div>
       ),
     },
     {
@@ -482,6 +527,104 @@ export default function AdminMoviesPage() {
               />
             </FormField>
           </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <FormField label="Status">
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData({ ...formData, status: e.target.value })}
+                className={selectCls()}
+              >
+                <option value="now_showing">Now Showing</option>
+                <option value="coming_soon">Coming Soon</option>
+                <option value="archived">Archived</option>
+              </select>
+            </FormField>
+
+            <FormField label="Rating (0 - 10)" error={formErrors.rating} hint="e.g. 8.4">
+              <input
+                type="number"
+                step="0.1"
+                min="0"
+                max="10"
+                value={formData.rating}
+                onChange={(e) => setFormData({ ...formData, rating: e.target.value })}
+                placeholder="e.g. 8.4"
+                className={inputCls(formErrors.rating)}
+              />
+            </FormField>
+
+            <FormField label="TMDB ID" hint="Optional, for sync">
+              <input
+                type="number"
+                value={formData.tmdbId}
+                onChange={(e) => setFormData({ ...formData, tmdbId: e.target.value })}
+                placeholder="e.g. 157336"
+                className={inputCls()}
+              />
+            </FormField>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <FormField label="Director" hint="Director's full name">
+              <input
+                type="text"
+                value={formData.director}
+                onChange={(e) => setFormData({ ...formData, director: e.target.value })}
+                placeholder="e.g. Christopher Nolan"
+                className={inputCls()}
+              />
+            </FormField>
+
+            <FormField label="Tagline" hint="Short promotional catchphrase">
+              <input
+                type="text"
+                value={formData.tagline}
+                onChange={(e) => setFormData({ ...formData, tagline: e.target.value })}
+                placeholder="e.g. Mankind was born on Earth…"
+                className={inputCls()}
+              />
+            </FormField>
+          </div>
+
+          <div>
+            <label className="text-xs font-medium text-neutral-300 uppercase tracking-wider block mb-1.5">
+              Available Formats
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {['2D', '3D', 'IMAX', '4DX'].map((fmt) => {
+                const isSelected = formData.formats?.includes(fmt);
+                return (
+                  <button
+                    key={fmt}
+                    type="button"
+                    onClick={() => {
+                      const cur = formData.formats || [];
+                      const next = isSelected ? cur.filter((f) => f !== fmt) : [...cur, fmt];
+                      setFormData({ ...formData, formats: next.length > 0 ? next : ['2D'] });
+                    }}
+                    className={`px-3 py-1 rounded text-xs font-semibold border transition-colors ${
+                      isSelected
+                        ? 'bg-amber-500/20 text-amber-300 border-amber-500/50'
+                        : 'bg-neutral-800 text-neutral-400 border-neutral-700 hover:text-white'
+                    }`}
+                  >
+                    {fmt}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <FormField label="Backdrop Image URL" hint="Landscape banner image link">
+            <input
+              type="url"
+              value={formData.backdrop}
+              onChange={(e) => setFormData({ ...formData, backdrop: e.target.value })}
+              placeholder="https://image.tmdb.org/t/p/w1280/…"
+              className={inputCls()}
+            />
+          </FormField>
 
           <FormField label="Cast" hint="Comma-separated actor names">
             <input

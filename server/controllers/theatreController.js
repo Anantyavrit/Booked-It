@@ -49,17 +49,97 @@ export const getTheatres = asyncHandler(async (req, res) => {
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// @desc    Get sorted distinct cities of active theatres
+// @desc    Get sorted distinct cities of active theatres with metadata
 // @route   GET /api/theatres/cities
 // @access  Public
 // ─────────────────────────────────────────────────────────────────────────────
 export const getCities = asyncHandler(async (_req, res) => {
-  const cities = await Theatre.distinct('city', { isActive: true });
-  const sortedCities = cities.filter(Boolean).sort((a, b) => a.localeCompare(b));
+  const POPULAR_CITIES = new Set([
+    'Mumbai',
+    'Delhi NCR',
+    'Bengaluru',
+    'Hyderabad',
+    'Chennai',
+    'Kolkata',
+    'Pune',
+    'Ahmedabad',
+  ]);
+
+  const cityAggregation = await Theatre.aggregate([
+    { $match: { isActive: true } },
+    {
+      $group: {
+        _id: '$city',
+        state: { $first: '$state' },
+        theatreCount: { $sum: 1 },
+      },
+    },
+    { $sort: { theatreCount: -1, _id: 1 } },
+  ]);
+
+  const result = cityAggregation
+    .filter((c) => Boolean(c._id))
+    .map((c) => ({
+      city: c._id,
+      state: c.state || '',
+      theatreCount: c.theatreCount,
+      isPopular: POPULAR_CITIES.has(c._id),
+    }));
 
   res.json({
     success: true,
-    data: sortedCities,
+    data: result,
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// @desc    Get nearby theatres by location (lat, lng, radius)
+// @route   GET /api/theatres/nearby
+// @access  Public
+// ─────────────────────────────────────────────────────────────────────────────
+export const getNearbyTheatres = asyncHandler(async (req, res) => {
+  const { lat, lng, radius } = req.query;
+
+  const latitude = parseFloat(lat);
+  const longitude = parseFloat(lng);
+
+  if (isNaN(latitude) || isNaN(longitude)) {
+    res.status(400);
+    throw new Error('lat and lng are required query parameters and must be valid numbers');
+  }
+
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    res.status(400);
+    throw new Error('lat must be between -90 and 90, lng between -180 and 180');
+  }
+
+  let maxDistance = 50000; // default 50km
+  if (radius) {
+    const r = parseFloat(radius);
+    if (!isNaN(r) && r > 0) {
+      maxDistance = r <= 150 ? r * 1000 : r;
+    }
+  }
+
+  const theatres = await Theatre.aggregate([
+    {
+      $geoNear: {
+        near: {
+          type: 'Point',
+          coordinates: [longitude, latitude],
+        },
+        distanceField: 'distance',
+        maxDistance: maxDistance,
+        query: { isActive: true },
+        spherical: true,
+      },
+    },
+    { $sort: { distance: 1 } },
+  ]);
+
+  res.json({
+    success: true,
+    data: theatres,
   });
 });
 

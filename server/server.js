@@ -24,6 +24,7 @@ import notificationRoutes from './routes/notificationRoutes.js';
 import adminRoutes        from './routes/adminRoutes.js';
 import { handleWebhook }  from './controllers/paymentController.js';
 import { startHoldCleanup, stopHoldCleanup } from './utils/holdCleanup.js';
+import { startShowsScheduler, stopShowsScheduler } from './utils/showsScheduler.js';
 import { initSocket } from './utils/socket.js';
 import './config/razorpay.js';
 
@@ -275,6 +276,7 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
   startHoldCleanup();
+  startShowsScheduler();
 });
 
 // ── 13. Graceful Shutdown & Process Handlers ──────────────────────────────────
@@ -294,7 +296,8 @@ const handleShutdown = (signal) => {
   server.close(async () => {
     console.log('[Server] HTTP connections closed.');
     stopHoldCleanup();
-    console.log('[Server] Hold cleanup scheduler stopped.');
+    stopShowsScheduler();
+    console.log('[Server] Schedulers stopped.');
 
     if (io) {
       io.close();

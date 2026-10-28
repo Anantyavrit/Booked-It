@@ -38,6 +38,9 @@ const movieSchema = new mongoose.Schema(
       enum: { values: ['U', 'UA', 'A'], message: 'Certificate must be U, UA, or A' },
     },
     cast:     { type: [String], default: [] },
+    director: { type: String, default: '', trim: true },
+    tagline:  { type: String, default: '', trim: true },
+    backdrop: { type: String, default: '', trim: true },
     poster:   { type: String, default: '' },
     trailerUrl: {
       type: String,
@@ -56,13 +59,35 @@ const movieSchema = new mongoose.Schema(
         message: 'trailerUrl must be a valid HTTP or HTTPS URL',
       },
     },
+    status: {
+      type: String,
+      enum: ['now_showing', 'coming_soon', 'archived'],
+      default: 'now_showing',
+    },
+    formats: {
+      type: [String],
+      enum: ['2D', '3D', 'IMAX', '4DX'],
+      default: ['2D'],
+    },
+    rating: {
+      type: Number,
+      min: [0, 'Rating cannot be less than 0'],
+      max: [10, 'Rating cannot exceed 10'],
+      default: null,
+    },
+    tmdbId: {
+      type: Number,
+      unique: true,
+      sparse: true,
+    },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
 
-// Efficient queries for the public movie listing
+// Efficient queries for the public movie listing & status filtering
 movieSchema.index({ isActive: 1, releaseDate: -1 });
+movieSchema.index({ status: 1, releaseDate: -1 });
 
 const Movie = mongoose.model('Movie', movieSchema);
 export default Movie;

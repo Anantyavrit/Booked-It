@@ -54,7 +54,7 @@ function SiteLayout() {
         <Navbar />
       </div>
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 pb-16 print:p-0 print:m-0 print:max-w-none">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 pb-24 md:pb-16 print:p-0 print:m-0 print:max-w-none">
         <Suspense fallback={<PageLoadingFallback />}>
           <Routes>
             {/* Public browsing routes */}

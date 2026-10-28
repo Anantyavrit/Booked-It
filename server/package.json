@@ -9,6 +9,9 @@
     "start": "node server.js",
     "seed:admin": "node utils/seedAdmin.js",
     "seed:sample": "node utils/seedSampleData.js",
+    "seed:movies": "node utils/seedMovies.js",
+    "seed:theatres": "node utils/seedTheatres.js",
+    "seed:shows": "node utils/generateShows.js",
     "test:concurrency": "node scripts/concurrencyTest.js",
     "test:socket": "node scripts/socketListener.js",
     "test:smoke": "node scripts/e2eSmoke.js"

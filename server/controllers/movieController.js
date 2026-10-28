@@ -43,6 +43,7 @@ const resolvePoster = (req, existingPoster = '') => {
 export const getMovies = asyncHandler(async (req, res) => {
   const {
     search,
+    status,
     genre,
     language,
     certificate,
@@ -50,6 +51,7 @@ export const getMovies = asyncHandler(async (req, res) => {
     theatre,
     date,
     sort,
+    hasShows,
     includeInactive,
   } = req.query;
 
@@ -61,7 +63,18 @@ export const getMovies = asyncHandler(async (req, res) => {
     filter.isActive = true;
   }
 
-  // 1. Title search (case-insensitive escaped regex)
+  // 1. Status filter (now_showing, coming_soon, archived)
+  if (status && ['now_showing', 'coming_soon', 'archived'].includes(status.trim())) {
+    filter.status = status.trim();
+  }
+
+  // 2. Global upcoming shows filter if hasShows='true' and no specific city/theatre/date
+  if (hasShows === 'true' && !city && !theatre && !date) {
+    const movieIds = await Show.distinct('movie', { startTime: { $gte: new Date() } });
+    filter._id = { $in: movieIds };
+  }
+
+  // 3. Title search (case-insensitive escaped regex)
   if (search) {
     filter.title = { $regex: escapeRegex(search.trim()), $options: 'i' };
   }
@@ -135,7 +148,9 @@ export const getMovies = asyncHandler(async (req, res) => {
     sortOption = { title: 1 };
   } else if (sort === 'duration') {
     sortOption = { duration: 1 };
-  } else if (sort === 'newest') {
+  } else if (sort === 'rating') {
+    sortOption = { rating: -1, releaseDate: -1, createdAt: -1 };
+  } else if (sort === 'releaseDate' || sort === 'newest') {
     sortOption = { releaseDate: -1, createdAt: -1 };
   }
 
@@ -276,11 +291,25 @@ export const getMovie = asyncHandler(async (req, res) => {
 // @access  Private/Admin
 // ─────────────────────────────────────────────────────────────────────────────
 export const createMovie = asyncHandler(async (req, res) => {
-  const { title, description, duration, releaseDate, certificate, trailerUrl } = req.body;
+  const {
+    title,
+    description,
+    duration,
+    releaseDate,
+    certificate,
+    trailerUrl,
+    status,
+    director,
+    tagline,
+    backdrop,
+    rating,
+    tmdbId,
+  } = req.body;
 
   const genres = parseArrayField(req.body.genres);
   const languages = parseArrayField(req.body.languages);
   const cast = parseArrayField(req.body.cast);
+  const formats = req.body.formats ? parseArrayField(req.body.formats) : ['2D'];
 
   const errors = [];
   if (!title?.trim()) errors.push('Title is required');
@@ -291,6 +320,18 @@ export const createMovie = asyncHandler(async (req, res) => {
   if (languages.length === 0) errors.push('At least one language is required');
   if (certificate && !['U', 'UA', 'A'].includes(certificate)) {
     errors.push('Certificate must be U, UA, or A');
+  }
+  if (status && !['now_showing', 'coming_soon', 'archived'].includes(status)) {
+    errors.push('Status must be now_showing, coming_soon, or archived');
+  }
+  if (rating !== undefined && rating !== '' && rating !== null) {
+    const numRating = Number(rating);
+    if (isNaN(numRating) || numRating < 0 || numRating > 10) {
+      errors.push('Rating must be a number between 0 and 10');
+    }
+  }
+  if (formats.some((f) => !['2D', '3D', 'IMAX', '4DX'].includes(f))) {
+    errors.push('Formats must only contain 2D, 3D, IMAX, or 4DX');
   }
   if (trailerUrl && typeof trailerUrl === 'string' && trailerUrl.trim()) {
     try {
@@ -321,6 +362,13 @@ export const createMovie = asyncHandler(async (req, res) => {
     cast,
     poster,
     trailerUrl: trailerUrl ? trailerUrl.trim() : '',
+    status: status || 'now_showing',
+    director: director ? director.trim() : '',
+    tagline: tagline ? tagline.trim() : '',
+    backdrop: backdrop ? backdrop.trim() : '',
+    formats: formats.length > 0 ? formats : ['2D'],
+    rating: rating !== undefined && rating !== '' && rating !== null ? Number(rating) : null,
+    tmdbId: tmdbId ? Number(tmdbId) : undefined,
   });
 
   res.status(201).json({ success: true, data: movie });
@@ -342,8 +390,23 @@ export const updateMovie = asyncHandler(async (req, res) => {
   const genres = parseArrayField(req.body.genres);
   const languages = parseArrayField(req.body.languages);
   const cast = parseArrayField(req.body.cast);
+  const formats = req.body.formats !== undefined ? parseArrayField(req.body.formats) : undefined;
 
-  const { title, description, duration, releaseDate, certificate, isActive, trailerUrl } = req.body;
+  const {
+    title,
+    description,
+    duration,
+    releaseDate,
+    certificate,
+    isActive,
+    trailerUrl,
+    status,
+    director,
+    tagline,
+    backdrop,
+    rating,
+    tmdbId,
+  } = req.body;
 
   const errors = [];
   if (duration !== undefined && (isNaN(duration) || duration < 30 || duration > 300)) {
@@ -351,6 +414,18 @@ export const updateMovie = asyncHandler(async (req, res) => {
   }
   if (certificate && !['U', 'UA', 'A'].includes(certificate)) {
     errors.push('Certificate must be U, UA, or A');
+  }
+  if (status !== undefined && !['now_showing', 'coming_soon', 'archived'].includes(status)) {
+    errors.push('Status must be now_showing, coming_soon, or archived');
+  }
+  if (rating !== undefined && rating !== '' && rating !== null) {
+    const numRating = Number(rating);
+    if (isNaN(numRating) || numRating < 0 || numRating > 10) {
+      errors.push('Rating must be a number between 0 and 10');
+    }
+  }
+  if (formats !== undefined && formats.some((f) => !['2D', '3D', 'IMAX', '4DX'].includes(f))) {
+    errors.push('Formats must only contain 2D, 3D, IMAX, or 4DX');
   }
   if (req.body.genres !== undefined && genres.length === 0) {
     errors.push('At least one genre is required');
@@ -386,6 +461,13 @@ export const updateMovie = asyncHandler(async (req, res) => {
   if (certificate !== undefined) movie.certificate = certificate;
   if (isActive !== undefined) movie.isActive = isActive === 'true' || isActive === true;
   if (trailerUrl !== undefined) movie.trailerUrl = trailerUrl ? String(trailerUrl).trim() : '';
+  if (status !== undefined) movie.status = status;
+  if (director !== undefined) movie.director = director ? String(director).trim() : '';
+  if (tagline !== undefined) movie.tagline = tagline ? String(tagline).trim() : '';
+  if (backdrop !== undefined) movie.backdrop = backdrop ? String(backdrop).trim() : '';
+  if (formats !== undefined) movie.formats = formats.length > 0 ? formats : ['2D'];
+  if (rating !== undefined) movie.rating = rating !== '' && rating !== null && !isNaN(rating) ? Number(rating) : null;
+  if (tmdbId !== undefined) movie.tmdbId = tmdbId ? Number(tmdbId) : undefined;
   movie.poster = poster;
 
   const updated = await movie.save();

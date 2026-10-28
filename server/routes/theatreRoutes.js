@@ -2,6 +2,7 @@ import express from 'express';
 import {
   getTheatres,
   getCities,
+  getNearbyTheatres,
   getTheatre,
   createTheatre,
   updateTheatre,
@@ -16,6 +17,7 @@ const router = express.Router();
 // Public routes
 router.get('/', optionalAuth, getTheatres);
 router.get('/cities', getCities); // must be before /:id
+router.get('/nearby', getNearbyTheatres); // must be before /:id
 router.get('/:id', validateObjectId(), getTheatre);
 
 // Admin only routes
