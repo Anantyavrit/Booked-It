@@ -62,7 +62,20 @@ app.use(
               scriptSrc: ["'self'", 'https://checkout.razorpay.com'],
               styleSrc: ["'self'", "'unsafe-inline'"],
               connectSrc: ["'self'", 'ws:', 'wss:', 'https://api.razorpay.com', 'https://lumberjack.razorpay.com'],
-              frameSrc: ["'self'", 'https://api.razorpay.com', 'https://checkout.razorpay.com'],
+              frameSrc: [
+                "'self'",
+                'https://api.razorpay.com',
+                'https://checkout.razorpay.com',
+                'https://www.youtube.com',
+                'https://youtube.com',
+                'https://www.youtube-nocookie.com',
+              ],
+              childSrc: [
+                "'self'",
+                'https://www.youtube.com',
+                'https://youtube.com',
+                'https://www.youtube-nocookie.com',
+              ],
               imgSrc: ["'self'", 'data:', 'https:'],
             },
           }
